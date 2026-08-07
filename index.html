@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b0d12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gym">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="app.css">
+<title>Gym</title>
+</head>
+<body>
+
+<div id="app">
+  <header id="topbar">
+    <h1 id="title">Training</h1>
+    <button id="topAction" class="ghost" hidden></button>
+  </header>
+
+  <main id="view"></main>
+
+  <nav id="tabbar">
+    <button data-tab="training" class="tab active">
+      <svg viewBox="0 0 24 24"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg><span>Training</span>
+    </button>
+    <button data-tab="verlauf" class="tab">
+      <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M7 16l4-5 3 3 5-7"/></svg><span>Verlauf</span>
+    </button>
+    <button data-tab="rezepte" class="tab">
+      <svg viewBox="0 0 24 24"><path d="M6 3v8a3 3 0 0 0 6 0V3M9 11v10M18 3c-1.5 1.5-2 3-2 5s.5 2.5 2 2.5V21"/></svg><span>Rezepte</span>
+    </button>
+    <button data-tab="tasche" class="tab">
+      <svg viewBox="0 0 24 24"><path d="M3 8h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8zM8 8V6a4 4 0 0 1 8 0v2"/></svg><span>Tasche</span>
+    </button>
+  </nav>
+</div>
+
+<!-- Pausen-Timer -->
+<div id="timer" hidden>
+  <div class="timer-card">
+    <p class="timer-label">Pause</p>
+    <svg class="ring" viewBox="0 0 120 120">
+      <circle class="ring-bg" cx="60" cy="60" r="52"/>
+      <circle class="ring-fg" cx="60" cy="60" r="52"/>
+    </svg>
+    <div class="timer-time" id="timerTime">01:30</div>
+    <div class="timer-btns">
+      <button class="chip" data-adj="-15">−15s</button>
+      <button class="chip" data-adj="15">+15s</button>
+    </div>
+    <button class="btn wide" id="timerSkip">Überspringen</button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal" hidden>
+  <div class="sheet">
+    <div class="sheet-head">
+      <button class="ghost" id="modalCancel">Abbrechen</button>
+      <strong id="modalTitle"></strong>
+      <button class="ghost strong" id="modalSave">Sichern</button>
+    </div>
+    <div class="sheet-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div id="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
