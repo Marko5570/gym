@@ -1,35 +1,10 @@
 /* ---------- Speicher ---------- */
 const KEY = 'gym.v1';
 const seed = () => ({
-  plans: [
-    { id: uid(), name: 'Push', ex: [
-      { name: 'Bankdrücken', sets: 4, reps: 8, weight: 60, rest: 120 },
-      { name: 'Schrägbank Kurzhantel', sets: 3, reps: 10, weight: 22, rest: 90 },
-      { name: 'Schulterdrücken', sets: 3, reps: 10, weight: 30, rest: 90 },
-      { name: 'Trizepsdrücken Kabel', sets: 3, reps: 12, weight: 25, rest: 60 },
-    ]},
-    { id: uid(), name: 'Pull', ex: [
-      { name: 'Klimmzüge', sets: 4, reps: 8, weight: 0, rest: 120 },
-      { name: 'Langhantelrudern', sets: 4, reps: 10, weight: 50, rest: 90 },
-      { name: 'Latzug', sets: 3, reps: 12, weight: 55, rest: 90 },
-      { name: 'Bizeps Curls', sets: 3, reps: 12, weight: 15, rest: 60 },
-    ]},
-    { id: uid(), name: 'Beine', ex: [
-      { name: 'Kniebeugen', sets: 4, reps: 8, weight: 80, rest: 150 },
-      { name: 'Rumänisches Kreuzheben', sets: 3, reps: 10, weight: 70, rest: 120 },
-      { name: 'Beinpresse', sets: 3, reps: 12, weight: 120, rest: 90 },
-      { name: 'Wadenheben', sets: 4, reps: 15, weight: 60, rest: 45 },
-    ]},
-  ],
+  plans: [],
   sessions: [],
-  recipes: [
-    { id: uid(), name: 'Protein-Overnight-Oats', tags: ['Frühstück','Meal Prep'],
-      kcal: 520, p: 38, c: 62, f: 12,
-      ing: '80 g Haferflocken\n250 ml Milch\n30 g Whey Vanille\n1 EL Chiasamen\n100 g Beeren\n1 TL Honig',
-      steps: '1. Alles außer Beeren in ein Glas geben und verrühren.\n2. Über Nacht in den Kühlschrank.\n3. Morgens Beeren obendrauf.' },
-  ],
-  bag: ['Handtuch','Trinkflasche','Shaker + Whey','Sportschuhe','Kopfhörer','Handgelenkbandagen','Wechselshirt','Duschzeug','Magnesium/Chalk','Schlüssel & Karte']
-    .map(t => ({ id: uid(), label: t, on: false })),
+  recipes: [],
+  bag: [],
   active: null,
   restDefault: 90,
 });
@@ -450,6 +425,10 @@ function editRecipe(id){
 
 /* ================= GYM-TASCHE ================= */
 function viewTasche(){
+  if (!db.bag.length){
+    $('#view').innerHTML = emptyBox('Tasche ist noch leer', 'Tippe oben rechts auf „+ Teil“ und leg deine Packliste an.');
+    return;
+  }
   const on = db.bag.filter(b => b.on).length;
   $('#view').innerHTML = `
     <div class="card">
@@ -555,7 +534,11 @@ function openBackup(){
     <p class="sec">Backup einspielen</p>
     <div class="field"><label>Gesicherten Text einfügen</label>
       <textarea id="bkIn" style="min-height:80px;font-size:12px" placeholder="Gesicherten Text einfügen …"></textarea></div>
-    <button class="btn danger wide" id="bkIn2">Daten ersetzen</button>`, null, 'Fertig');
+    <button class="btn danger wide" id="bkIn2">Daten ersetzen</button>
+    <p class="sec">Von vorn anfangen</p>
+    <p class="small dim" style="margin-bottom:10px">Löscht Pläne, Trainings, Rezepte, Taschenliste und alle
+    automatischen Sicherungspunkte. Sichere vorher, falls du etwas behalten willst.</p>
+    <button class="btn danger wide" id="bkWipe">Alle Daten löschen</button>`, null, 'Fertig');
 
   const marked = () => { db.lastBackup = Date.now(); save(); };
   $('#bkDl').onclick = () => {
@@ -571,6 +554,13 @@ function openBackup(){
     try { await navigator.clipboard.writeText(json); toast('Kopiert'); }
     catch { ta.focus(); ta.select(); toast('Markiert – jetzt „Kopieren“ wählen'); }
     marked();
+  };
+  $('#bkWipe').onclick = () => {
+    if (!confirm('Wirklich ALLE Daten löschen? Pläne, Trainings, Rezepte und Taschenliste sind dann weg.')) return;
+    if (!confirm('Letzte Warnung – das lässt sich nur mit einem Backup rückgängig machen. Fortfahren?')) return;
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(SNAPKEY);
+    location.reload();
   };
   $('#modalBody').querySelectorAll('[data-snap]').forEach(b => b.onclick = () => {
     const s = loadSnaps()[b.dataset.snap];
