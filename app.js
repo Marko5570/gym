@@ -40,6 +40,33 @@ catch { db = seed(); }
 db.sessions.sort((a, b) => a.date - b.date);
 const save = () => localStorage.setItem(KEY, JSON.stringify(db));
 
+/* --- Automatische Sicherungspunkte ---
+   Nach jedem Training (und spätestens alle 3 Tage) legt die App still eine
+   Kopie ab. Rettet vor Fehlbedienung, nicht vor Geräteverlust — dafür gibt es
+   den Export im Backup-Dialog. */
+const SNAPKEY = 'gym.snapshots';
+const MAXSNAP = 5;
+
+function loadSnaps(){
+  try { return JSON.parse(localStorage.getItem(SNAPKEY)) || []; } catch { return []; }
+}
+function autoSnapshot(reason){
+  const json = JSON.stringify({ plans:db.plans, sessions:db.sessions, recipes:db.recipes,
+                                bag:db.bag, restDefault:db.restDefault, lastBackup:db.lastBackup });
+  const snaps = loadSnaps();
+  if (snaps.length && snaps[snaps.length-1].json === json) return; // nichts geändert
+  snaps.push({ ts: Date.now(), reason, json });
+  while (snaps.length > MAXSNAP) snaps.shift();
+  // Safari deckelt den Speicher: im Zweifel lieber alte Punkte opfern als alles verlieren
+  for (;;) {
+    try { localStorage.setItem(SNAPKEY, JSON.stringify(snaps)); return; }
+    catch {
+      if (snaps.length <= 1) { localStorage.removeItem(SNAPKEY); return; }
+      snaps.shift();
+    }
+  }
+}
+
 /* ---------- Helfer ---------- */
 function uid(){ return Math.random().toString(36).slice(2,10); }
 const $ = s => document.querySelector(s);
@@ -91,11 +118,28 @@ function viewTraining(){
   db.active ? viewSession() : viewPlans();
 }
 
+// Erinnert erst, wenn wirklich etwas zu verlieren ist
+function backupNag(){
+  if (db.sessions.length < 3) return '';
+  const days = db.lastBackup ? Math.floor((Date.now() - db.lastBackup) / 86400000) : null;
+  if (days !== null && days < 14) return '';
+  return `<div class="card tap nag" id="nag">
+    <div class="row">
+      <span class="nag-i">!</span>
+      <div class="grow">
+        <p style="font-weight:700">Daten sichern</p>
+        <p class="small dim">${days === null
+          ? 'Du hast noch nie gesichert. Deine Trainings liegen nur auf diesem iPhone.'
+          : `Letzte Sicherung vor ${days} Tagen.`} Tippen zum Sichern.</p>
+      </div>
+    </div></div>`;
+}
+
 function viewPlans(){
   const last = {};
   db.sessions.forEach(s => { if (!last[s.planId] || s.date > last[s.planId]) last[s.planId] = s.date; });
 
-  $('#view').innerHTML = db.plans.length ? db.plans.map(p => `
+  $('#view').innerHTML = backupNag() + (db.plans.length ? db.plans.map(p => `
     <div class="card">
       <div class="plan-h">
         <div class="grow">
@@ -110,10 +154,11 @@ function viewPlans(){
       </div>
       <button class="btn wide" data-start="${p.id}">Training starten</button>
     </div>`).join('')
-    : emptyBox('Noch keine Trainingspläne', 'Tippe oben rechts auf „+ Plan“.');
+    : emptyBox('Noch keine Trainingspläne', 'Tippe oben rechts auf „+ Plan“.'));
 
   $('#view').querySelectorAll('[data-start]').forEach(b => b.onclick = () => startSession(b.dataset.start));
   $('#view').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editPlan(b.dataset.edit));
+  const nag = $('#nag'); if (nag) nag.onclick = openBackup;
 }
 
 function startSession(planId){
@@ -236,6 +281,7 @@ function finishSession(){
     dur: Math.round((Date.now() - a.start) / 1000), volume: Math.round(volumeOf(a)), ex,
   });
   db.active = null; save();
+  autoSnapshot('nach Training');
   toast('Training gespeichert 💪'); render();
 }
 
@@ -498,23 +544,40 @@ function openBackup(){
     <button class="btn sec2 wide" id="bkCopy" style="margin-top:10px">Text kopieren</button>
     <div class="field" style="margin-top:16px"><label>Dein Backup</label>
       <textarea id="bkOut" readonly style="min-height:80px;font-size:12px">${esc(json)}</textarea></div>
-    <p class="sec">Wiederherstellen</p>
-    <div class="field"><label>Backup hier einfügen</label>
+    <p class="sec">Automatische Sicherungspunkte</p>
+    <p class="small dim" style="margin-bottom:10px">Die App legt nach jedem Training selbst eine Kopie an
+    – die letzten ${MAXSNAP}. Die liegen mit auf diesem Gerät, helfen also nur bei Fehlbedienung.</p>
+    ${loadSnaps().map((s, i) => `<div class="row between" style="padding:9px 0;border-top:1px solid var(--line)">
+      <div class="grow"><span class="small">${dateDE(s.ts)}</span>
+      <span class="small dim"> · ${esc(s.reason)}</span></div>
+      <button class="chip" data-snap="${i}">Laden</button></div>`).reverse().join('')
+      || '<p class="small dim">Noch keine – der erste entsteht nach deinem nächsten Training.</p>'}
+    <p class="sec">Backup einspielen</p>
+    <div class="field"><label>Gesicherten Text einfügen</label>
       <textarea id="bkIn" style="min-height:80px;font-size:12px" placeholder="Gesicherten Text einfügen …"></textarea></div>
     <button class="btn danger wide" id="bkIn2">Daten ersetzen</button>`, null, 'Fertig');
 
+  const marked = () => { db.lastBackup = Date.now(); save(); };
   $('#bkDl').onclick = () => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([json], { type:'application/json' }));
     a.download = `gym-backup-${new Date().toISOString().slice(0,10)}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    marked();
   };
   $('#bkCopy').onclick = async () => {
     const ta = $('#bkOut');
     try { await navigator.clipboard.writeText(json); toast('Kopiert'); }
     catch { ta.focus(); ta.select(); toast('Markiert – jetzt „Kopieren“ wählen'); }
+    marked();
   };
+  $('#modalBody').querySelectorAll('[data-snap]').forEach(b => b.onclick = () => {
+    const s = loadSnaps()[b.dataset.snap];
+    if (!s || !confirm(`Stand vom ${dateDE(s.ts)} wiederherstellen? Die aktuellen Daten werden ersetzt.`)) return;
+    localStorage.setItem(KEY, JSON.stringify({ ...JSON.parse(s.json), active: null }));
+    location.reload();
+  });
   $('#bkIn2').onclick = () => {
     let data;
     try { data = JSON.parse($('#bkIn').value); }
@@ -587,4 +650,8 @@ $('#modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
 
 /* ================= Start ================= */
 render();
+{
+  const last = loadSnaps().at(-1);
+  if (!last || Date.now() - last.ts > 3 * 86400000) autoSnapshot('automatisch');
+}
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

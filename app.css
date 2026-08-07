@@ -88,6 +88,13 @@ h1,h2,h3,p{margin:0}
 .ex-line{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
 .ex-line:first-of-type{border-top:0}
 
+/* Backup-Erinnerung */
+.nag{background:#221b0e;border-color:#4a3a17}
+.nag-i{
+  width:28px;height:28px;flex:none;border-radius:50%;background:var(--acc2);color:#231803;
+  display:grid;place-items:center;font-weight:800;font-size:17px;
+}
+
 /* Aktive Session */
 .live{background:linear-gradient(135deg,#2a1410,#1d1a12);border-color:#43291f}
 .set-row{display:grid;grid-template-columns:34px 1fr 1fr 46px;gap:8px;align-items:center;margin-top:8px}
